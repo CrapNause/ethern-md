@@ -1,0 +1,13 @@
+{
+	"name": "Fênix-bot MD",
+	"version": "1.0.0",
+	"main": "./src/index.js",
+	"type": "commonjs",
+	"license": "MIT",
+	"dependencies": {
+		"@adiwajshing/baileys": "^5.0.0",
+		"file-type": "^16.5.4",
+		"qrcode-terminal": "^0.12.0",
+		"syntax-error": "^1.4.0"
+    }
+}
