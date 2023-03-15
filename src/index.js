@@ -1,6 +1,9 @@
 /*
 	• Script Básico
 	• Executando comando através de Arquivo, sem necessidade de "Switch".
+	• (Recomendado) Use o "yarn" para baixar as bibliotecas.
+	• Iniciar: bash start.sh
+	• Parar: CTRL+C ou CTRL+Z (força a parada)
 	•================================•
 	• Instagram: @nause.dreams
 	• GitHub: CrapNause
@@ -52,26 +55,27 @@ global.reload = (type, filename, cacheFile) => {
 		
 		const render = require('.'+filename)
 		const objKeys = Object.keys(render).length
-		if (position == -1 && objKeys) {
+		if (!objKeys) return console.warn(`Esperando obter Object no novo: ${filename}...`)
+		if (position == -1) {
 			console.info('Adicionando novo Plugin:', filename)
 			global.plugins.list[type].push(render)
 			global.plugins.set(render.name, render)
-		} else if (objKeys) {
-			console.info('Atualizando Plugin:', filename)
-			global.plugins.list[type][position] = render
-			global.plugins.set(render.name, render)
+		} else {
+			console.info('Atualizando Plugin:', filename);
+			global.plugins.list[type][position] = render;
+			global.plugins.set(render.name, render);
 		}
 	} else if (position !== -1) {
-		console.warn('Deletando Plugin:', filename)
+		console.warn('Deletando Plugin:', filename);
 		global.plugins.delete(searObj[position].name);
-		global.plugins.list[type].splice(position, 1)
+		global.plugins.list[type].splice(position, 1);
 	} else {
-		console.log('Não carregado:', filename)
+		console.warn('Não carregado:', filename);
 	}
 }
 const readCommands = () => {
 	for (let i of dirs) {
-		fs.watch(pluginFolder+i+'/', (s_, a_) => global.reload(i, pluginFolder+i+'/'+a_, true))
+		fs.watch(pluginFolder+i+'/', (s_, a_) => global.reload(i, pluginFolder+i+'/'+a_, true));
 		for (let file of fs.readdirSync(pluginFolder+i).filter((arq) => pluginFilter(arq))) {
 			global.reload(i, pluginFolder+i+'/'+file)
 		}
@@ -152,7 +156,7 @@ const startMD = async () => {
 					isCmd: (isCmd ? true : false),
 					command: command,
 					prefix: m.data.prefix
-				})
+				});
 				if ('start' in isCmd) isCmd.start.bind({
 					m,
 					...conn,
@@ -199,7 +203,10 @@ const startMD = async () => {
 		if (!Buffer.isBuffer(buffer)) return reject('Sem buffer...');
 		
 		const { mime, ext } = await FileType.fromBuffer(buffer) || { mime: 'application/octet-stream', ext: 'bin' }
-		if (filename) await fs.promises.writeFile(filename+'.'+ext, buffer);
+		if (filename) {
+			filename = './tmp/'+filename.split('/').pop()
+			await fs.promises.writeFile(filename+'.'+ext, buffer);
+		}
 
 		resolve(filename && fs.existsSync(filename+'.'+ext) ? filename+'.'+ext : buffer);
     });
