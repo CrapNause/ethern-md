@@ -2,6 +2,7 @@ const moment = require("moment-timezone");
 const processsTime = (timestamp) => {
 	return moment.duration(moment() - moment(timestamp * 1000)).asSeconds()
 }
+
 module.exports = {
 	fileName: "ping.js",
     name: "ping",
@@ -16,6 +17,6 @@ module.exports = {
     	let str = "Comando recebido através do "+deviceType+"."
     	if (quoted?.sender !== sender) str += `\n• Mensagem citada, vem do sistema [ *${quoted.deviceType == "Baileys" ? "Servidor Baileys" : quoted.deviceType}* ].`
 
-    	reply(`• Tempo de resposta: *${processsTime(messageTimestamp)}ms*\n• Tempo de atividade: *${this.time(uptime).trim()}*.\n-\n• ${str}`, { reagir: '⚡' });
+    	await reply(`• Tempo de resposta: *${processsTime(messageTimestamp)}ms*\n• Tempo de atividade: *${this.time(uptime).trim()}*.\n-\n• ${str}`, { reagir: '⚡' });
 	}
 }

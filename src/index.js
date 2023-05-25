@@ -17,82 +17,24 @@ const {
 	default: makeWASocket,
 	downloadMediaMessage,
     fetchLatestBaileysVersion
-} = require('@adiwajshing/baileys');
+} = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const pino = require("pino");
 const FileType = require('file-type');
-const { contentMsg } = require("../lib");
-const syntaxerror = require('syntax-error');
+const { contentMsg, ReadCommands } = require("../lib");
 const logger = pino({ timestamp: () => `,"time":"${new Date().toJSON()}"` }).child({ })
 logger.level = 'silent'
 logger.stream = 'store'
-const pluginFolder = "./commands/";
-let dirs = fs.readdirSync(pluginFolder);
-const pluginFilter = filename => filename.endsWith(".js")
-global.plugins = new Map()
-global.plugins.list = {}
-global.reload = (type, filename, cacheFile) => {
-	type = type.toLowerCase()
-	dirs = fs.readdirSync(pluginFolder)
-	if (!pluginFilter(filename)) return
-
-	global.plugins.type = dirs.filter(v => v !== "_").map(v => v)
-	let position = -1
-	let searObj = global.plugins.list[type]
-	if (typeof searObj !== 'object') {
-		searObj = global.plugins.list[type] = []
-	}
-	if (fs.existsSync(filename) && cacheFile) {
-		fs.unwatchFile(filename);
-		delete require.cache[require.resolve('.'+filename)]
-	}
-	try {
-		position = searObj.findIndex((v) => v.fileName == filename.split('/').pop())
-	} catch { }
-	if (fs.existsSync(filename)) {
-		const err = syntaxerror(fs.readFileSync(filename), filename)
-		if (err) return console.error(`syntax error while loading [ ${filename} ]`, err)
-		
-		const render = require('.'+filename)
-		const objKeys = Object.keys(render).length
-		if (!objKeys) return console.warn(`Esperando obter Object no novo: ${filename}...`)
-		if (position == -1) {
-			console.info('Adicionando novo Plugin:', filename)
-			global.plugins.list[type].push(render)
-			global.plugins.set(render.name, render)
-		} else {
-			console.info('Atualizando Plugin:', filename);
-			global.plugins.list[type][position] = render;
-			global.plugins.set(render.name, render);
-		}
-	} else if (position !== -1) {
-		console.warn('Deletando Plugin:', filename);
-		global.plugins.delete(searObj[position].name);
-		global.plugins.list[type].splice(position, 1);
-	} else {
-		console.warn('Não carregado:', filename);
-	}
-}
-const readCommands = () => {
-	for (let i of dirs) {
-		fs.watch(pluginFolder+i+'/', (s_, a_) => global.reload(i, pluginFolder+i+'/'+a_, true));
-		for (let file of fs.readdirSync(pluginFolder+i).filter((arq) => pluginFilter(arq))) {
-			global.reload(i, pluginFolder+i+'/'+file)
-		}
-	}
-	return 'pronto'
-}
-readCommands();
-Object.freeze(global.reload);
+const cmds = Object.freeze(new ReadCommands({ pasta: "./commands/", logs: true }));
+cmds.readFiles(); // Renderizar
+cron.schedule('17 * * * * *', () => {
+	cmds.readFiles(); // Atualizar e Verificar se há nova pasta+arquivos
+}, {
+	scheduled: true,
+	timezone: "America/Sao_Paulo"
+});
 
 const startMD = async () => {
-	setInterval(() => {
-		for (let i of fs.readdirSync(pluginFolder)) {
-			fs.watch(pluginFolder+i+'/', (s_, a_) => {
-				if (!global.plugins.list[i].find(v => v.fileName == a_)) global.reload(i, pluginFolder+i+'/'+a_, true)
-			});
-		}
-	}, 10 * 1000);
 	const isWhatsapp = await fetchLatestBaileysVersion();
 	const { state, saveCreds } =  await useMultiFileAuthState('./tmp/Baileys/');
 	const conn = await makeWASocket({
@@ -103,27 +45,7 @@ const startMD = async () => {
 		downloadHistory: false,
 		printQRInTerminal: true,
 		markOnlineOnConnect: true,
-		browser: [ 'Ethern Baileys-MD', 'Firefox', '3.0' ],
-		patchMessageBeforeSending: (message) => {
-			const requiresPatch = !!(
-				message.buttonsMessage ||
-				message.templateMessage ||
-				message.listMessage
-			);
-			if (requiresPatch) message = {
-				viewOnceMessage: {
-					message: {
-						messageContextInfo: {
-							deviceListMetadataVersion: 2,
-							deviceListMetadata: {}
-						},
-						...message,
-					},
-				},
-			};
-			
-			return message;
-		}
+		browser: [ 'Ethern Baileys-MD', 'Firefox', '3.0' ]
 	});
 	conn.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update
@@ -148,7 +70,7 @@ const startMD = async () => {
 				if (!m) return
 
 				const command = m.data.command
-				const isCmd = global.plugins.get(command) || Array.from(global.plugins.values()).filter((v) => Object.keys(v).length).find((v) => v.alias.find((x) => x.toLowerCase() == command)) || {}
+				const isCmd = cmds.readCommand(command)
 				console.log('messages.upsert - [MSG]:', {
 					nome: m.pushName,
 					sender: m.sender,
